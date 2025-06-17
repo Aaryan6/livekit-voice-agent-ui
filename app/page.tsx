@@ -2,6 +2,7 @@
 
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
+import UserInfoForm, { UserInfo } from "@/components/UserInfoForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,18 +22,32 @@ import type { ConnectionDetails } from "./api/connection-details/route";
 
 export default function Page() {
   const [room] = useState(new Room());
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
-  const onConnectButtonClicked = useCallback(async () => {
-    const url = new URL(
-      process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? "/api/connection-details",
-      window.location.origin
-    );
-    const response = await fetch(url.toString());
-    const connectionDetailsData: ConnectionDetails = await response.json();
+  const onConnectButtonClicked = useCallback(
+    async (userData: UserInfo) => {
+      const url = new URL(
+        process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? "/api/connection-details",
+        window.location.origin
+      );
 
-    await room.connect(connectionDetailsData.serverUrl, connectionDetailsData.participantToken);
-    await room.localParticipant.setMicrophoneEnabled(true);
-  }, [room]);
+      // Add user info as query parameters
+      url.searchParams.set("name", userData.name);
+      url.searchParams.set("skillLevel", userData.skillLevel);
+      url.searchParams.set("role", userData.role);
+      if (userData.experience) {
+        url.searchParams.set("experience", userData.experience);
+      }
+
+      const response = await fetch(url.toString());
+      const connectionDetailsData: ConnectionDetails = await response.json();
+
+      await room.connect(connectionDetailsData.serverUrl, connectionDetailsData.participantToken);
+      await room.localParticipant.setMicrophoneEnabled(true);
+      setUserInfo(userData);
+    },
+    [room]
+  );
 
   useEffect(() => {
     room.on(RoomEvent.MediaDevicesError, onDeviceFailure);
@@ -43,10 +58,14 @@ export default function Page() {
 
   return (
     <div data-lk-theme="default" className="flex h-screen bg-background">
-      <RoomContext.Provider value={room}>
-        <AIInterviewInterface onConnectButtonClicked={onConnectButtonClicked} />
-        <RoomAudioRenderer />
-      </RoomContext.Provider>
+      {!userInfo ? (
+        <UserInfoForm onSubmit={onConnectButtonClicked} />
+      ) : (
+        <RoomContext.Provider value={room}>
+          <AIInterviewInterface onConnectButtonClicked={() => {}} />
+          <RoomAudioRenderer />
+        </RoomContext.Provider>
+      )}
     </div>
   );
 }

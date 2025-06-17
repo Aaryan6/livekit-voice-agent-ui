@@ -16,7 +16,7 @@ export type ConnectionDetails = {
   participantToken: string;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (LIVEKIT_URL === undefined) {
       throw new Error("LIVEKIT_URL is not defined");
@@ -28,11 +28,26 @@ export async function GET() {
       throw new Error("LIVEKIT_API_SECRET is not defined");
     }
 
-    // Generate participant token
-    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+    // Extract user info from query parameters
+    const url = new URL(request.url);
+    const name = url.searchParams.get("name") || "Candidate";
+    const skillLevel = url.searchParams.get("skillLevel") || "mid";
+    const role = url.searchParams.get("role") || "Software Engineer";
+    const experience = url.searchParams.get("experience") || "";
+
+    // Create room name with user info
+    const roomName = `interview-${name.replace(/\s+/g, "_")}-${skillLevel}-${Date.now()}`;
+
+    // Create participant token with metadata
     const participantToken = await createParticipantToken(
-      { identity: participantIdentity },
+      {
+        identity: name,
+        metadata: JSON.stringify({
+          skill: skillLevel,
+          role: role,
+          experience: experience,
+        }),
+      },
       roomName
     );
 
@@ -41,7 +56,7 @@ export async function GET() {
       serverUrl: LIVEKIT_URL,
       roomName,
       participantToken: participantToken,
-      participantName: participantIdentity,
+      participantName: name,
     };
     const headers = new Headers({
       "Cache-Control": "no-store",

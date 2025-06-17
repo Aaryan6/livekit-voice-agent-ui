@@ -3,22 +3,16 @@ import * as React from "react";
 
 export default function TranscriptionView() {
   const combinedTranscriptions = useCombinedTranscriptions();
-  const containerRef = React.useRef<HTMLDivElement>(null);
-
+  const bottomRef = React.useRef<HTMLDivElement>(null);
   // scroll to bottom when new transcription is added
   React.useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [combinedTranscriptions]);
 
   return (
-    <div className="relative h-[200px] w-full max-w-[90vw] mx-auto">
+    <div className="relative w-full max-w-[90vw] mx-auto">
       {/* Scrollable content */}
-      <div
-        ref={containerRef}
-        className="h-full flex flex-col gap-2 text-black overflow-y-auto px-4 py-8"
-      >
+      <div className="h-full flex flex-col gap-2 text-black overflow-y-auto px-4 py-8">
         {combinedTranscriptions.map((segment) => (
           <div
             id={segment.id}
@@ -32,6 +26,7 @@ export default function TranscriptionView() {
             {segment.text}
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
     </div>
   );
