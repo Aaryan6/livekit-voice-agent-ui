@@ -1,19 +1,21 @@
 "use client";
 
-import { CloseIcon } from "@/components/CloseIcon";
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   BarVisualizer,
   DisconnectButton,
   RoomAudioRenderer,
   RoomContext,
-  VideoTrack,
   VoiceAssistantControlBar,
   useVoiceAssistant,
 } from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Room, RoomEvent } from "livekit-client";
+import { Mic, MicOff, Send, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { ConnectionDetails } from "./api/connection-details/route";
 
@@ -21,15 +23,6 @@ export default function Page() {
   const [room] = useState(new Room());
 
   const onConnectButtonClicked = useCallback(async () => {
-    // Generate room connection details, including:
-    //   - A random Room name
-    //   - A random Participant name
-    //   - An Access Token to permit the participant to join the room
-    //   - The URL of the LiveKit server to connect to
-    //
-    // In real-world application, you would likely allow the user to specify their
-    // own participant name, and possibly to choose from existing rooms to join.
-
     const url = new URL(
       process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? "/api/connection-details",
       window.location.origin
@@ -43,132 +36,177 @@ export default function Page() {
 
   useEffect(() => {
     room.on(RoomEvent.MediaDevicesError, onDeviceFailure);
-
     return () => {
       room.off(RoomEvent.MediaDevicesError, onDeviceFailure);
     };
   }, [room]);
 
   return (
-    <main data-lk-theme="default" className="h-full grid content-center bg-[var(--lk-bg)]">
+    <div data-lk-theme="default" className="flex h-screen bg-background">
       <RoomContext.Provider value={room}>
-        <div className="lk-room-container max-w-[1024px] w-[90vw] mx-auto max-h-[90vh]">
-          <SimpleVoiceAssistant onConnectButtonClicked={onConnectButtonClicked} />
-        </div>
+        <AIInterviewInterface onConnectButtonClicked={onConnectButtonClicked} />
+        <RoomAudioRenderer />
       </RoomContext.Provider>
-    </main>
+    </div>
   );
 }
 
-function SimpleVoiceAssistant(props: { onConnectButtonClicked: () => void }) {
-  const { state: agentState } = useVoiceAssistant();
+function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
+  const { state: agentState, audioTrack } = useVoiceAssistant();
+
+  const isRecording = agentState === "listening";
+  const isConnected = agentState !== "disconnected";
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {agentState === "disconnected" ? (
-          <motion.div
-            key="disconnected"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="grid items-center justify-center h-full"
-          >
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="uppercase px-4 py-2 bg-white text-black rounded-md"
-              onClick={() => props.onConnectButtonClicked()}
-            >
-              Start a conversation
-            </motion.button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="connected"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex flex-col items-center gap-4 h-full"
-          >
-            <AgentVisualizer />
-            <div className="flex-1 w-full">
-              <TranscriptionView />
-            </div>
-            <div className="w-full">
-              <ControlBar onConnectButtonClicked={props.onConnectButtonClicked} />
-            </div>
-            <RoomAudioRenderer />
-            <NoAgentNotification state={agentState} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
+      {/* Left Sidebar */}
+      <div className="w-full max-w-sm bg-slate-900 border-r border-slate-800 flex flex-col">
+        {/* Audio Visualizer */}
+        <div className="p-6">
+          <h2 className="text-white text-lg font-semibold mb-4">Audio Activity</h2>
+          <div className="h-[200px] w-full flex items-center justify-center">
+            <BarVisualizer
+              state={agentState}
+              barCount={5}
+              trackRef={audioTrack}
+              color="white"
+              className="w-full h-full bg-transparent"
+              options={{
+                minHeight: 24,
+                maxHeight: 60,
+              }}
+            />
+          </div>
+        </div>
 
-function AgentVisualizer() {
-  const { state: agentState, videoTrack, audioTrack } = useVoiceAssistant();
+        {/* Controls Section */}
+        <div className="flex-1 p-6 flex flex-col justify-center items-center space-y-6">
+          <AnimatePresence mode="wait">
+            {!isConnected ? (
+              <motion.div
+                key="disconnected"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center space-y-4"
+              >
+                <Button
+                  size="lg"
+                  onClick={props.onConnectButtonClicked}
+                  className="w-20 h-20 rounded-full bg-teal-600 hover:bg-teal-700 transition-all duration-200"
+                >
+                  <Mic className="w-8 h-8 text-white" />
+                </Button>
+                <span className="text-white text-sm font-medium">Start Interview</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="connected"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center space-y-4"
+              >
+                {/* Microphone Button */}
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-teal-600 hover:bg-teal-700 transition-all duration-200 flex items-center justify-center">
+                    {isRecording ? (
+                      <MicOff className="w-8 h-8 text-white" />
+                    ) : (
+                      <Mic className="w-8 h-8 text-white" />
+                    )}
+                  </div>
+                </div>
 
-  if (videoTrack) {
-    return (
-      <div className="h-[512px] w-[512px] rounded-lg overflow-hidden">
-        <VideoTrack trackRef={videoTrack} />
+                <span className="text-white text-sm font-medium">
+                  {isRecording ? "Listening..." : "Tap to speak"}
+                </span>
+
+                {/* Voice Assistant Controls */}
+                <div className="flex items-center space-x-2">
+                  <VoiceAssistantControlBar controls={{ leave: false }} />
+                  <DisconnectButton className="!bg-transparent !border-none">
+                    <Button variant="outline" size="sm" className="">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </DisconnectButton>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Status */}
+        <div className="p-4 border-t border-slate-800">
+          <div className="flex items-center justify-center space-x-2">
+            <div
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-gray-500"}`}
+            />
+            <span className="text-slate-400 text-xs">
+              {isConnected ? "AI Agent Active" : "AI Agent Inactive"}
+            </span>
+          </div>
+        </div>
       </div>
-    );
-  }
-  return (
-    <div className="h-[300px] w-full">
-      <BarVisualizer
-        state={agentState}
-        barCount={5}
-        trackRef={audioTrack}
-        className="agent-visualizer"
-        options={{ minHeight: 24 }}
-      />
-    </div>
-  );
-}
 
-function ControlBar(props: { onConnectButtonClicked: () => void }) {
-  const { state: agentState } = useVoiceAssistant();
+      {/* Right Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Interview Practice Session</h1>
+              <p className="text-muted-foreground text-sm">AI-powered interview preparation</p>
+            </div>
+            <Badge
+              variant="outline"
+              className={
+                isConnected
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-gray-50 text-gray-700 border-gray-200"
+              }
+            >
+              {isConnected ? "Live Session" : "Disconnected"}
+            </Badge>
+          </div>
+        </div>
 
-  return (
-    <div className="relative h-[60px]">
-      <AnimatePresence>
-        {agentState === "disconnected" && (
-          <motion.button
-            initial={{ opacity: 0, top: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, top: "-10px" }}
-            transition={{ duration: 1, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="uppercase absolute left-1/2 -translate-x-1/2 px-4 py-2 bg-white text-black rounded-md"
-            onClick={() => props.onConnectButtonClicked()}
-          >
-            Start a conversation
-          </motion.button>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {agentState !== "disconnected" && agentState !== "connecting" && (
-          <motion.div
-            initial={{ opacity: 0, top: "10px" }}
-            animate={{ opacity: 1, top: 0 }}
-            exit={{ opacity: 0, top: "-10px" }}
-            transition={{ duration: 0.4, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex h-8 absolute left-1/2 -translate-x-1/2  justify-center"
-          >
-            <VoiceAssistantControlBar controls={{ leave: false }} />
-            <DisconnectButton>
-              <CloseIcon />
-            </DisconnectButton>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        {/* Chat Messages */}
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {isConnected ? (
+              <TranscriptionView />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground text-center">
+                  Connect to start your interview session and see the conversation here.
+                </p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Input Area */}
+        <div className="border-t border-border p-4">
+          <div className="flex items-center space-x-2 max-w-4xl mx-auto">
+            <div className="flex-1 bg-muted rounded-lg p-3">
+              <p className="text-sm text-muted-foreground">
+                {!isConnected
+                  ? "Click the microphone to start your interview session"
+                  : isRecording
+                    ? "🎤 Listening... Speak your response"
+                    : "Click the microphone to start speaking or type your response"}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" disabled={!isConnected}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <NoAgentNotification state={agentState} />
+    </>
   );
 }
 
