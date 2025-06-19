@@ -16,7 +16,7 @@ import {
 } from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Room, RoomEvent } from "livekit-client";
-import { Mic, MicOff, Send, X } from "lucide-react";
+import { Mic, MicOff, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { ConnectionDetails } from "./api/connection-details/route";
 
@@ -204,24 +204,6 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
             )}
           </div>
         </ScrollArea>
-
-        {/* Input Area */}
-        <div className="border-t border-border p-4">
-          <div className="flex items-center space-x-2 max-w-4xl mx-auto">
-            <div className="flex-1 bg-muted rounded-lg p-3">
-              <p className="text-sm text-muted-foreground">
-                {!isConnected
-                  ? "Click the microphone to start your interview session"
-                  : isRecording
-                    ? "🎤 Listening... Speak your response"
-                    : "Click the microphone to start speaking or type your response"}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" disabled={!isConnected}>
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       <NoAgentNotification state={agentState} />
