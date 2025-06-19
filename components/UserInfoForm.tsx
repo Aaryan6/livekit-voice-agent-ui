@@ -28,11 +28,16 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    if (userInfo.name.trim()) {
-      onSubmit(userInfo);
+    try {
+      setIsLoading(true);
+      if (userInfo.name.trim()) {
+        onSubmit(userInfo);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

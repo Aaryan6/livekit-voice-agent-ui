@@ -1,5 +1,6 @@
 "use client";
 
+import CodeEditor from "@/components/CodeEditor";
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
 import UserInfoForm, { UserInfo } from "@/components/UserInfoForm";
@@ -12,10 +13,11 @@ import {
   RoomAudioRenderer,
   RoomContext,
   VoiceAssistantControlBar,
+  useRoomContext,
   useVoiceAssistant,
 } from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Room, RoomEvent } from "livekit-client";
+import { Room, RoomEvent, RpcInvocationData } from "livekit-client";
 import { Mic, MicOff, Send, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { ConnectionDetails } from "./api/connection-details/route";
@@ -72,9 +74,96 @@ export default function Page() {
 
 function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
+  const room = useRoomContext();
+  const [codeEditorOpen, setCodeEditorOpen] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [currentLanguage, setCurrentLanguage] = useState("javascript");
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
+
+  // Set up RPC methods for code editor
+  useEffect(() => {
+    if (!isConnected || !room?.localParticipant) {
+      console.log("RPC Setup: Not connected or no participant", {
+        isConnected,
+        hasParticipant: !!room?.localParticipant,
+      });
+      return;
+    }
+
+    console.log("Setting up RPC methods for code editor");
+
+    // Register RPC method to open code editor
+    const openCodeEditor = async (data: RpcInvocationData) => {
+      try {
+        console.log("Received openCodeEditor RPC call:", data);
+        const params = JSON.parse(data.payload);
+        console.log("Parsed parameters:", params);
+
+        setCurrentQuestion(params.question || "Please write your solution:");
+        setCurrentLanguage(params.language || "javascript");
+        setCodeEditorOpen(true);
+
+        console.log("Code editor opened successfully");
+        return JSON.stringify({ success: true });
+      } catch (error) {
+        console.error("Error opening code editor:", error);
+        return JSON.stringify({ success: false, error: "Failed to open code editor" });
+      }
+    };
+
+    room.localParticipant.registerRpcMethod("openCodeEditor", openCodeEditor);
+    console.log("RPC method 'openCodeEditor' registered successfully");
+
+    return () => {
+      // Cleanup RPC methods
+      if (room?.localParticipant) {
+        room.localParticipant.unregisterRpcMethod("openCodeEditor");
+      }
+    };
+  }, [isConnected, room]);
+
+  const handleCodeSubmission = async (code: string, language: string, explanation?: string) => {
+    if (!room?.localParticipant) {
+      console.error("Cannot submit code: No local participant");
+      return;
+    }
+
+    console.log("Submitting code:", {
+      code: code.substring(0, 100) + "...",
+      language,
+      explanation,
+      question: currentQuestion,
+    });
+
+    // Send code back to agent via RPC
+    try {
+      const agentParticipant = Array.from(room.remoteParticipants.values())[0];
+      if (agentParticipant) {
+        console.log("Sending code to agent:", agentParticipant.identity);
+
+        const response = await room.localParticipant.performRpc({
+          destinationIdentity: agentParticipant.identity,
+          method: "submitCode",
+          payload: JSON.stringify({
+            code,
+            language,
+            explanation,
+            question: currentQuestion,
+          }),
+          responseTimeout: 10000,
+        });
+
+        console.log("Code submission response:", response);
+        setCodeEditorOpen(false);
+      } else {
+        console.error("No agent participant found");
+      }
+    } catch (error) {
+      console.error("Error submitting code:", error);
+    }
+  };
 
   return (
     <>
@@ -225,6 +314,15 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
       </div>
 
       <NoAgentNotification state={agentState} />
+
+      {/* Code Editor Modal */}
+      <CodeEditor
+        isOpen={codeEditorOpen}
+        onClose={() => setCodeEditorOpen(false)}
+        onSubmit={handleCodeSubmission}
+        question={currentQuestion}
+        language={currentLanguage}
+      />
     </>
   );
 }
