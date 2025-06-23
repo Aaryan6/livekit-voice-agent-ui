@@ -35,6 +35,8 @@ export async function GET(request: Request) {
     const role = url.searchParams.get("role") || "Software Engineer";
     const experience = url.searchParams.get("experience") || "";
 
+    console.log("Interview setup:", { name, skillLevel, role, experience });
+
     // Create room name with user info
     const roomName = `interview-${name.replace(/\s+/g, "_")}-${skillLevel}-${Date.now()}`;
 
