@@ -23,9 +23,15 @@ import { useEffect, useState } from "react";
 interface CodeEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (code: string, language: string, explanation?: string) => void;
+  onSubmit: (
+    code: string,
+    language: string,
+    explanation?: string,
+    executionOutput?: string
+  ) => void;
   question: string;
   language?: string;
+  isInterpreter?: boolean;
 }
 
 const SUPPORTED_LANGUAGES = [
@@ -205,10 +211,13 @@ export default function CodeEditor({
   onSubmit,
   question,
   language = "javascript",
+  isInterpreter = false,
 }: CodeEditorProps) {
   const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [code, setCode] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [executionOutput, setExecutionOutput] = useState("");
+  const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -219,8 +228,26 @@ export default function CodeEditor({
     }
   }, [isOpen, selectedLanguage]);
 
+  const handleExecute = async () => {
+    if (!isInterpreter || selectedLanguage !== "python") {
+      return;
+    }
+
+    setIsExecuting(true);
+    try {
+      // For demonstration, we'll simulate code execution
+      // In a real implementation, you'd want to use a secure code execution service
+      const simulatedOutput = `Executing Python code...\n${code}\n\nOutput: (simulated execution)`;
+      setExecutionOutput(simulatedOutput);
+    } catch (error) {
+      setExecutionOutput(`Error: ${error}`);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   const handleSubmit = () => {
-    onSubmit(code, selectedLanguage, explanation);
+    onSubmit(code, selectedLanguage, explanation, executionOutput);
     onClose();
   };
 
@@ -234,14 +261,21 @@ export default function CodeEditor({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Code Editor</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground mt-2">
-            {question}
-          </DialogDescription>
-        </DialogHeader>
+        <DialogHeader className="flex flex-row justify-between">
+          <div>
+            <DialogTitle className="text-xl font-semibold">
+              {isInterpreter ? "Python Code Interpreter" : "Code Editor"}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-2">
+              {question}
+              {isInterpreter && (
+                <div className="mt-1 text-blue-600">
+                  ✨ You can write and execute Python code directly in this environment
+                </div>
+              )}
+            </DialogDescription>
+          </div>
 
-        <div className="flex-1 flex flex-col space-y-4">
           {/* Language Selector */}
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium">Language:</label>
@@ -258,9 +292,12 @@ export default function CodeEditor({
               </SelectContent>
             </Select>
           </div>
-
+        </DialogHeader>
+        <div className="flex-1 flex flex-col space-y-4">
           {/* Code Editor */}
-          <div className="flex-1 border rounded-md overflow-hidden">
+          <div
+            className={`${isInterpreter ? "flex-1" : "flex-1"} border rounded-md overflow-hidden`}
+          >
             <Editor
               height="100%"
               language={selectedLanguage}
@@ -279,6 +316,30 @@ export default function CodeEditor({
               }}
             />
           </div>
+
+          {/* Execute Button for Interpreter */}
+          {isInterpreter && (
+            <div className="flex justify-center">
+              <Button
+                onClick={handleExecute}
+                disabled={isExecuting || !code.trim()}
+                variant="outline"
+                className="w-32"
+              >
+                {isExecuting ? "Executing..." : "Run Code"}
+              </Button>
+            </div>
+          )}
+
+          {/* Execution Output for Interpreter */}
+          {isInterpreter && executionOutput && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Output</label>
+              <div className="border rounded-md p-3 bg-gray-900 text-green-400 font-mono text-sm max-h-32 overflow-y-auto">
+                <pre className="whitespace-pre-wrap">{executionOutput}</pre>
+              </div>
+            </div>
+          )}
 
           {/* Explanation Textarea */}
           <div className="space-y-2">

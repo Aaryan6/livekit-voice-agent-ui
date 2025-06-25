@@ -1,37 +1,108 @@
 <img src="./.github/assets/app-icon.png" alt="Voice Assistant App Icon" width="100" height="100">
 
-# Web Voice Assistant
+# Voice Agent Bot - UI Frontend
 
-This is a starter template for [LiveKit Agents](https://docs.livekit.io/agents) that provides a simple voice interface using the [LiveKit JavaScript SDK](https://github.com/livekit/client-sdk-js). It supports [voice](https://docs.livekit.io/agents/start/voice-ai), [transcriptions](https://docs.livekit.io/agents/build/text/), and [virtual avatars](https://docs.livekit.io/agents/integrations/avatar).
+This is a Next.js application that provides a web interface for the voice agent bot, featuring real-time conversation and code editing capabilities.
 
-This template is built with Next.js and is free for you to use or modify as you see fit.
+## Features
 
-![App screenshot](/.github/assets/frontend-screenshot.jpeg)
+- **Real-time Voice Interaction**: Connect with AI agents for voice-based conversations
+- **Code Editor Integration**: Interactive code editor with syntax highlighting for multiple languages
+- **Live Transcription**: Real-time display of conversation transcripts
+- **User Authentication**: User info collection and session management
 
-## Getting started
+## Pages
 
-> [!TIP]
-> If you'd like to try this application without modification, you can deploy an instance in just a few clicks with [LiveKit Cloud Sandbox](https://cloud.livekit.io/projects/p_/sandbox/templates/voice-assistant-frontend).
+### Main Interview Page (`/`)
 
-Run the following command to automatically clone this template.
+The main interface for conducting AI-powered interview sessions with voice interaction and code editing capabilities.
 
-```bash
-lk app create --template voice-assistant-frontend
+### Code Interpreter Test Page (`/code-interpreter-test`)
+
+A dedicated testing page for the code editor component that includes:
+
+- **Sample Questions**: Pre-defined programming questions across different categories:
+
+  - Data Structures (linked lists, binary trees, hash tables)
+  - Algorithms (binary search, sorting, graph algorithms)
+  - String Manipulation (anagrams, compression, permutations)
+  - Dynamic Programming (coin change, LCS, knapsack)
+
+- **Custom Questions**: Input your own programming challenges
+- **Multi-language Support**: JavaScript, TypeScript, Python, Java, C++, Go, Rust
+- **Submission History**: Track and review all code submissions
+- **Code Templates**: Auto-generated starter code for each language
+
+## Getting Started
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
+
+2. Run the development server:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Testing the Code Interpreter
+
+To test the code interpreter functionality:
+
+1. Navigate to `/code-interpreter-test` in your browser
+2. Either select a pre-defined question or enter a custom one
+3. Choose your preferred programming language
+4. Click "Open Editor" to launch the code editor
+5. Write your solution and optionally add an explanation
+6. Submit your code and view it in the submissions history
+
+## Project Structure
+
+```
+├── app/
+│   ├── page.tsx                    # Main interview interface
+│   ├── code-interpreter-test/
+│   │   └── page.tsx               # Code interpreter test page
+│   └── api/
+│       └── connection-details/
+├── components/
+│   ├── CodeEditor.tsx             # Monaco-based code editor
+│   ├── TranscriptionView.tsx      # Real-time transcription display
+│   ├── UserInfoForm.tsx           # User information collection
+│   └── ui/                        # Reusable UI components
+└── hooks/
+    └── ...                        # Custom React hooks
 ```
 
-Then run the app with:
+## Technologies Used
 
-```bash
-pnpm install
-pnpm dev
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
+- **LiveKit** - Real-time communication platform
+- **Monaco Editor** - VS Code editor in the browser
+- **Framer Motion** - Animation library
+- **Radix UI** - Accessible component primitives
+
+## Environment Variables
+
+Create a `.env.local` file with the following variables:
+
 ```
-
-And open http://localhost:3000 in your browser.
-
-You'll also need an agent to speak with. Try our [Voice AI Quickstart](https://docs.livekit.io/start/voice-ai) for the easiest way to get started.
-
-> [!NOTE]
-> If you need to modify the LiveKit project credentials used, you can edit `.env.local` (copy from `.env.example` if you don't have one) to suit your needs.
+NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=/api/connection-details
+```
 
 ## Contributing
 

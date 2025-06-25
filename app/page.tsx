@@ -78,6 +78,7 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
   const [codeEditorOpen, setCodeEditorOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentLanguage, setCurrentLanguage] = useState("javascript");
+  const [editorType, setEditorType] = useState<"editor" | "interpreter">("editor");
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
@@ -103,6 +104,7 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
 
         setCurrentQuestion(params.question || "Please write your solution:");
         setCurrentLanguage(params.language || "javascript");
+        setEditorType("editor");
         setCodeEditorOpen(true);
 
         console.log("Code editor opened successfully");
@@ -113,18 +115,45 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
       }
     };
 
+    // Register RPC method to open code interpreter
+    const openCodeInterpreter = async (data: RpcInvocationData) => {
+      try {
+        console.log("Received openCodeInterpreter RPC call:", data);
+        const params = JSON.parse(data.payload);
+        console.log("Parsed parameters:", params);
+
+        setCurrentQuestion(params.question || "Please write your solution:");
+        setCurrentLanguage(params.language || "python");
+        setEditorType("interpreter");
+        setCodeEditorOpen(true);
+
+        console.log("Code interpreter opened successfully");
+        return JSON.stringify({ success: true });
+      } catch (error) {
+        console.error("Error opening code interpreter:", error);
+        return JSON.stringify({ success: false, error: "Failed to open code interpreter" });
+      }
+    };
+
     room.localParticipant.registerRpcMethod("openCodeEditor", openCodeEditor);
-    console.log("RPC method 'openCodeEditor' registered successfully");
+    room.localParticipant.registerRpcMethod("openCodeInterpreter", openCodeInterpreter);
+    console.log("RPC methods 'openCodeEditor' and 'openCodeInterpreter' registered successfully");
 
     return () => {
       // Cleanup RPC methods
       if (room?.localParticipant) {
         room.localParticipant.unregisterRpcMethod("openCodeEditor");
+        room.localParticipant.unregisterRpcMethod("openCodeInterpreter");
       }
     };
   }, [isConnected, room]);
 
-  const handleCodeSubmission = async (code: string, language: string, explanation?: string) => {
+  const handleCodeSubmission = async (
+    code: string,
+    language: string,
+    explanation?: string,
+    executionOutput?: string
+  ) => {
     if (!room?.localParticipant) {
       console.error("Cannot submit code: No local participant");
       return;
@@ -135,6 +164,8 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
       language,
       explanation,
       question: currentQuestion,
+      editorType,
+      executionOutput: executionOutput ? executionOutput.substring(0, 100) + "..." : undefined,
     });
 
     // Send code back to agent via RPC
@@ -143,15 +174,20 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
       if (agentParticipant) {
         console.log("Sending code to agent:", agentParticipant.identity);
 
+        // Use different RPC methods for different editor types
+        const method = editorType === "interpreter" ? "submitCodeInterpreter" : "submitCode";
+        const payload = {
+          code,
+          language,
+          explanation,
+          question: currentQuestion,
+          ...(executionOutput && { output: executionOutput }),
+        };
+
         const response = await room.localParticipant.performRpc({
           destinationIdentity: agentParticipant.identity,
-          method: "submitCode",
-          payload: JSON.stringify({
-            code,
-            language,
-            explanation,
-            question: currentQuestion,
-          }),
+          method,
+          payload: JSON.stringify(payload),
           responseTimeout: 10000,
         });
 
@@ -315,13 +351,14 @@ function AIInterviewInterface(props: { onConnectButtonClicked: () => void }) {
 
       <NoAgentNotification state={agentState} />
 
-      {/* Code Editor Modal */}
+      {/* Code Editor/Interpreter Modal */}
       <CodeEditor
         isOpen={codeEditorOpen}
         onClose={() => setCodeEditorOpen(false)}
         onSubmit={handleCodeSubmission}
         question={currentQuestion}
         language={currentLanguage}
+        isInterpreter={editorType === "interpreter"}
       />
     </>
   );
